@@ -86,18 +86,13 @@ pub async fn change_activity(ctx: serenity::Context) {
 
     loop {
         timer.tick().await;
-        info!("===== TICK =====");
 
         let exists = if let Some(activity) = activity_cycle.next() {
-            info!("setting activity");
             ctx.set_activity(Some(activity));
-            info!("success setting activity");
             true
         } else {
             false
         };
-
-        info!("cycle exists: {}", exists);
     }
 }
 
