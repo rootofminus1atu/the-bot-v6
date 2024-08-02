@@ -11,12 +11,14 @@ mod helpers;
 mod events;
 mod commands;
 mod db_access;
+mod model;
 
 
 use helpers::cleverbot::Cleverbot;
 
 pub struct Data {
     db: PgPool,
+    client: reqwest::Client,
     translation_key: String,
     cleverbot: Arc<Cleverbot>
 } // User data, which is stored and accessible in all command invocations
@@ -60,6 +62,8 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
 
     info!("Starting off with cookie: {}", cookie);
 
+    let client = reqwest::Client::new();
+
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -71,7 +75,9 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 commands::fun::sashley::sashley(),
                 
                 commands::randomizer::animal::fox(),
-                commands::randomizer::popequote::popequote()
+                commands::randomizer::popequote::popequote(),
+
+                commands::admin::time_based::config()
                 
                 // owner
                 // kill(),
@@ -98,7 +104,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 poise::builtins::register_globally(ctx, coms).await?;
 
                 println!("setting up papiez messages");
-                events::papiez::schedule_papiez_msg(ctx.clone(), db.clone());
+                events::papiez::schedule_papiez_msg(ctx.clone(), db.clone(), client.clone());
 
                 println!("starting activity cycle");
                 tokio::spawn(events::time_based::change_activity(ctx.clone()));
@@ -108,6 +114,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
 
                 Ok(Data {
                     db,
+                    client,
                     translation_key,
                     cleverbot
                 })
