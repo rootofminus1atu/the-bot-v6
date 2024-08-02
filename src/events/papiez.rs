@@ -1,14 +1,14 @@
+use std::sync::Arc;
+
 use chrono_tz::Europe::Dublin;
 use poise::serenity_prelude::{self as serenity, client, ChannelId, Mentionable, UserId};
 use sqlx::{Pool, Postgres};
 use tokio_cron::{Scheduler, Job};
-use crate::model::popequote::PopeQuote;
-
+use crate::model::{pope_msg_location::PopeMsgLocation, popequote::PopeQuote};
+use futures::future::join_all;
 
 const PAPIEZ_EMOJI: &str = "<a:papaspin:1263955406917734431>";
 const BACKUP_PAPIEZ_MESSAGE: &str = "<a:papaspin:1263955406917734431> 2137 <a:papaspin:1263955406917734431>";
-
-const PAPIEZ_CHANNEL_ID: u64 = 969615820156182590;
 
 // in db
 // - server_id
@@ -37,9 +37,25 @@ async fn send_papiez_msg(ctx: serenity::Context, db: Pool<Postgres>, client: req
         }
     };
 
-    let channel_id = ChannelId::from(PAPIEZ_CHANNEL_ID);
+    let locations = match PopeMsgLocation::get_all(&db).await {
+        Ok(locations) => locations,
+        Err(why) => {
+            eprintln!("Failed to fetch the list of guild/channel locations for the timed pope msg: {:?}", why);
+            return;
+        }
+    };
 
-    if let Err(why) = channel_id.say(&ctx.http, papiez_message).await {
-        eprintln!("Failed to send 2137 message: {:?}", why);
-    }
+    let http = ctx.http;
+
+    let futures = locations.into_iter().map(|location| {
+        let http = http.clone();
+        let papiez_message = papiez_message.clone();
+        async move {
+            if let Err(why) = ChannelId::new(location.channel_id as u64).say(&http, &papiez_message).await {
+                eprintln!("Failed to send message to channel {}: {:?}", location.channel_id, why);
+            }
+        }
+    });
+
+    join_all(futures).await;
 }

@@ -1,8 +1,5 @@
-use poise::serenity_prelude::{model::channel, ChannelId};
-use serde::{Deserialize, Serialize};
-use sqlx::{prelude::FromRow, PgPool};
-
-use crate::{Context, Error};
+use poise::serenity_prelude::ChannelId;
+use crate::{model::pope_msg_location::PopeMsgLocation, Context, Error};
 
 
 // timed msgs
@@ -79,42 +76,3 @@ pub async fn channel(ctx: Context<'_>, channel_id: ChannelId) -> Result<(), Erro
     Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct PopeMsgLocation {
-    guild_id: i64,
-    channel_id: i64
-}
-
-impl PopeMsgLocation {
-    const TABLE_NAME: &str = "testing.pope_msg_location";
-
-    pub async fn upsert(db: &PgPool, guild_id: i64, channel_id: i64) -> Result<Self, sqlx::Error> {
-        let res = sqlx::query_as::<_, PopeMsgLocation>("")
-            .fetch_one(db)
-            .await?;
-
-        Ok(res)
-    }
-
-    pub async fn insert(db: &PgPool, guild_id: i64, channel_id: i64) -> Result<Self, sqlx::Error> {
-        let query = format!("INSERT INTO {} (guild_id, channel_id) VALUES ($1, $2) RETURNING *", Self::TABLE_NAME);
-        let res = sqlx::query_as::<_, PopeMsgLocation>(&query)
-            .bind(guild_id)
-            .bind(channel_id)
-            .fetch_one(db)
-            .await?;
-
-        Ok(res)
-    }
-
-    pub async fn delete(db: &PgPool, guild_id: i64, channel_id: i64) -> Result<Option<Self>, sqlx::Error> {
-        let query = format!("DELETE FROM {} WHERE guild_id = $1 AND channel_id = $2 RETURNING *", Self::TABLE_NAME);
-        let res = sqlx::query_as::<_, PopeMsgLocation>(&query)
-            .bind(guild_id)
-            .bind(channel_id)
-            .fetch_optional(db)
-            .await?;
-    
-        Ok(res)
-    }
-}

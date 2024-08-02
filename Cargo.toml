@@ -21,4 +21,5 @@ tokio-cron = "0.1.2"
 humantime = "2.1.0"
 ordinal = "0.3.2"
 shunting = "0.1.2"
+futures = "0.3.30"
 
