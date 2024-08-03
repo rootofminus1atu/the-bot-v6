@@ -7,6 +7,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 use tracing::info;
 
 
+pub mod error;
 mod helpers;
 mod events;
 mod commands;
@@ -77,7 +78,12 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 commands::randomizer::animal::fox(),
                 commands::randomizer::popequote::popequote(),
 
-                commands::admin::time_based::config()
+                commands::admin::timed_message_config::admin(),
+
+                commands::owner::cleverbot::forget(),
+                commands::owner::cleverbot::cerebroscopy(),
+                commands::owner::cleverbot::recookie(),
+                commands::owner::kill::kill(),
                 
                 // owner
                 // kill(),
@@ -103,14 +109,14 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 println!("Syncing {} commands", coms.len());
                 poise::builtins::register_globally(ctx, coms).await?;
 
-                println!("setting up papiez messages");
-                events::papiez::schedule_papiez_msg(ctx.clone(), db.clone(), client.clone());
+                println!("setting up pope messages");
+                events::pope_msg::schedule_pope_msg(ctx.clone(), db.clone(), client.clone());
 
                 println!("starting activity cycle");
-                tokio::spawn(events::time_based::change_activity(ctx.clone()));
+                tokio::spawn(events::activity::change_activity(ctx.clone()));
 
                 println!("starting clairvoyance");
-                tokio::spawn(events::time_based::clairvoyance(ctx.clone(), db.clone()));
+                tokio::spawn(events::clairvoyance::clairvoyance(ctx.clone(), db.clone()));
 
                 Ok(Data {
                     db,

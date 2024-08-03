@@ -1,1 +1,1 @@
-pub mod time_based;
+pub mod timed_message_config;

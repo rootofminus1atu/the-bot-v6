@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use poise::{serenity_prelude::{ChannelId, ChannelType, Color, ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow, CreateEmbed, CreateInteractionResponse, CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, EditMessage, GuildChannel}, CreateReply};
+use poise::{serenity_prelude::{self as serenity, ChannelId, ChannelType, Color, ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow, CreateEmbed, CreateInteractionResponse, CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, EditMessage, GuildChannel}, CreateReply};
 use regex::Regex;
 use crate::{Context, Error};
 
@@ -102,4 +102,19 @@ pub fn color_from_hex_str(input: &str) -> Result<Color, Error> {
         .map(|hex_value| Color::from(hex_value))?;
 
     Ok(color)
+}
+
+
+
+pub async fn admin_or_owner(ctx: Context<'_>) -> Result<bool, Error> {
+    let is_owner = ctx.framework().options().owners.contains(&ctx.author().id);
+
+    let is_admin = if let Some(guild_id) = ctx.guild_id() {
+        let member = guild_id.member(ctx, ctx.author().id).await?;
+        member.permissions(ctx)?.contains(serenity::Permissions::ADMINISTRATOR)
+    } else {
+        false
+    };
+
+    Ok(is_owner || is_admin)
 }

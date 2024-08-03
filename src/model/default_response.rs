@@ -3,12 +3,12 @@ use sqlx::prelude::FromRow;
 use super::boilerplate::BoilerplateForStringListTables;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct Prophecy {
+pub struct DefaultResponse {
     pub id: i64,
     pub content: String
 }
 
-impl BoilerplateForStringListTables for Prophecy {
+impl BoilerplateForStringListTables for DefaultResponse {
     const TABLE_NAME: &'static str = "testing.prophecy";
     const FIELD_NAME: &'static str = "content";
 }

@@ -1,3 +1,5 @@
 pub mod popequote;
-pub mod pope_msg_location;
 pub mod prophecy;
+pub mod location;
+pub mod boilerplate;
+mod default_response;

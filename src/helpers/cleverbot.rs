@@ -16,7 +16,7 @@ use crate::Error;
 pub struct Cleverbot {
     api_link: String,
     api_key: String,
-    cookie: Arc<AsyncMutex<Option<String>>>,  // Arc<AsyncMutex<String>>  if I figure out encoding/decoding issues
+    cookie: Arc<AsyncMutex<Option<String>>>,
     context: Arc<AsyncMutex<MaxQueue<String>>>,
     client: reqwest::Client
 }
@@ -27,18 +27,13 @@ impl Cleverbot {
         Cleverbot {
             api_link,
             api_key,
-            cookie: Arc::new(AsyncMutex::new(None)),  // Arc::new(AsyncMutex::new(Self::generate_cookie().await?)),  // if I figure out encoding
+            cookie: Arc::new(AsyncMutex::new(None)),
             context: Arc::new(AsyncMutex::new(MaxQueue::new(max))),
             client: reqwest::Client::new()
         }
     }
 
     pub async fn generate_cookie(&self) -> Result<String, Error> {
-        // because of reqwest encoding decoing bs I'm just going with this for now idc what other people think
-        // previous: "XVIS=TE1939AFFIAGAYQZD8D31"
-        // previous: "XVIS=TE1939AFFIAGAYQZA6731"
-        // previous: "XVIS=TE1939AFFIAGAYQZPOO31"
-        // previous: "XVIS=TE1939AFFIAGAYQZWEE31"
         let new_cookie = get_cookie().await?;
         let mut l = self.cookie.lock().await;
         *l = Some(new_cookie.clone());

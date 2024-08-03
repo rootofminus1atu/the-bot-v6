@@ -1,10 +1,13 @@
 use std::time::Duration;
 use chrono::Utc;
-use poise::serenity_prelude::{self as serenity, ActivityData, ChannelId};
+use futures::future::join_all;
+use poise::serenity_prelude::{self as serenity, ChannelId};
 use sqlx::PgPool;
 use tokio;
-use crate::{helpers::misc::{pretty_date, random_date, random_int}, model::prophecy::Prophecy};
+use tracing::error;
+use crate::{helpers::misc::{pretty_date, random_date, random_int}, model::{location::{Location, LocationKind}, prophecy::Prophecy}};
 use humantime::format_duration;
+use crate::model::boilerplate::BoilerplateForStringListTables;
 
 
 /// A default prophecy, in case we don't get any from the db.
@@ -20,8 +23,6 @@ const MAX_HOURS: i32 = 32;
 /// For example if today we have August 12th 2036, and `YEARS = 100`, then the upper bound would be August 12th 2136 . 
 const YEARS: u64 = 100;
 
-// const CHANNEL_ID: u64 = 969615820156182590;
-const CHANNEL_ID: u64 = 1269047326358507591;
 
 pub async fn clairvoyance(ctx: serenity::Context, db: PgPool) {
     loop {
@@ -39,38 +40,34 @@ pub async fn clairvoyance(ctx: serenity::Context, db: PgPool) {
         let prophecy = Prophecy::get_random(&db).await.map(|p| p.content).unwrap_or(DEFAULT_PROPHECY.into());
         let msg = format!("{}, {}", pretty_date(&date), prophecy);
 
+
+        let locations = match Location::get_all(&db, LocationKind::Clairvoyance).await {
+            Ok(locations) => locations,
+            Err(why) => {
+                error!("Failed to fetch the list of guild/channel locations for the timed clairvoyance msg: {:?}", why);
+                return;
+            }
+        };
+
+        let http = ctx.http.clone();
+
+        let futures = locations.into_iter().map(|location| {
+            let http = http.clone();
+            let msg = msg.clone();
+            async move {
+                if let Err(why) = ChannelId::new(location.channel_id as u64).say(&http, &msg).await {
+                    error!("Failed to send clairvoyance message to channel {}: {:?}", location.channel_id, why);
+                }
+            }
+        });
+
+        join_all(futures).await;
         
         // in the future get channels from the db instead of hardcoding them here
-        let channel_id = ChannelId::from(CHANNEL_ID); 
+        // let channel_id = ChannelId::from(CHANNEL_ID); 
 
-        if let Err(why) = channel_id.say(&ctx, msg).await {
-            eprintln!("Failed to send clairvoyance message: {:?}", why);
-        }
+        // if let Err(why) = channel_id.say(&ctx, msg).await {
+        //     eprintln!("Failed to send clairvoyance message: {:?}", why);
+        // }
     }
 }
-
-
-
-pub async fn change_activity(ctx: serenity::Context) {
-    let activities = vec![
-        ActivityData::watching(":3"),
-        ActivityData::playing(":3"),
-    ];
-
-    let mut activity_cycle = activities.into_iter().cycle();
-    let mut timer = tokio::time::interval(Duration::from_secs(60));
-
-    loop {
-        timer.tick().await;
-
-        let _exists = if let Some(activity) = activity_cycle.next() {
-            ctx.set_activity(Some(activity));
-            true
-        } else {
-            false
-        };
-    }
-}
-
-
-
