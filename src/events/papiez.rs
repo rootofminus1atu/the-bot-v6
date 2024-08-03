@@ -1,20 +1,13 @@
-use std::sync::Arc;
-
 use chrono_tz::Europe::Dublin;
-use poise::serenity_prelude::{self as serenity, client, ChannelId, Mentionable, UserId};
+use poise::serenity_prelude::{self as serenity, ChannelId};
 use sqlx::{Pool, Postgres};
 use tokio_cron::{Scheduler, Job};
-use crate::model::{pope_msg_location::PopeMsgLocation, popequote::PopeQuote};
 use futures::future::join_all;
+
+use crate::model::{pope_msg_location::{Location, PopeMsgCtx}, popequote::PopeQuote};
 
 const PAPIEZ_EMOJI: &str = "<a:papaspin:1263955406917734431>";
 const BACKUP_PAPIEZ_MESSAGE: &str = "<a:papaspin:1263955406917734431> 2137 <a:papaspin:1263955406917734431>";
-
-// in db
-// - server_id
-// - channel_id
-// composite key to allow many channels in the same server
-
 
 
 
@@ -37,7 +30,7 @@ async fn send_papiez_msg(ctx: serenity::Context, db: Pool<Postgres>, client: req
         }
     };
 
-    let locations = match PopeMsgLocation::get_all(&db).await {
+    let locations = match Location::get_all::<PopeMsgCtx>(&db).await {
         Ok(locations) => locations,
         Err(why) => {
             eprintln!("Failed to fetch the list of guild/channel locations for the timed pope msg: {:?}", why);

@@ -1,6 +1,6 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 use anyhow::Context as _;
-use poise::serenity_prelude::{self as serenity, ClientBuilder, UserId};
+use poise::serenity_prelude::{self as serenity, ClientBuilder};
 use shuttle_runtime::SecretStore;
 use shuttle_serenity::ShuttleSerenity;
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -110,7 +110,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 tokio::spawn(events::time_based::change_activity(ctx.clone()));
 
                 println!("starting clairvoyance");
-                tokio::spawn(events::time_based::clairvoyance(ctx.clone()));
+                tokio::spawn(events::time_based::clairvoyance(ctx.clone(), db.clone()));
 
                 Ok(Data {
                     db,

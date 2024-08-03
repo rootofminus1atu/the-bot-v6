@@ -10,7 +10,7 @@ pub struct PopeQuote {
 }
 
 impl PopeQuote {
-    pub const API_LINK: &str = "https://jp2cenzoapi.onrender.com";
+    pub const API_LINK: &'static str = "https://jp2cenzoapi.onrender.com";
 
     fn route(path: &str) -> String {
         format!("{}{}", Self::API_LINK, path)

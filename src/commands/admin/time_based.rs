@@ -1,5 +1,6 @@
+
 use poise::serenity_prelude::ChannelId;
-use crate::{model::pope_msg_location::PopeMsgLocation, Context, Error};
+use crate::{model::pope_msg_location::{Location, PopeMsgCtx}, Context, Error};
 
 
 // timed msgs
@@ -49,14 +50,14 @@ pub async fn channel(ctx: Context<'_>, channel_id: ChannelId) -> Result<(), Erro
     let channel_id: i64 = channel_id.into();
     let db = &ctx.data().db;
 
-    let insert_res = PopeMsgLocation::insert(db, guild_id, channel_id).await;
+    let insert_res = Location::insert::<PopeMsgCtx>(db, guild_id, channel_id).await;
 
     // let delete_res = if let Err(delete_err) = insert_res {
     //     PopeMsgLocation::delete(db, guild_id, channel_id).await?.ok_or("Some db error")
     // };
 
     let delete_res = if insert_res.is_ok() { Err ("") } else {
-        let res = PopeMsgLocation::delete(db, guild_id, channel_id).await;
+        let res = Location::delete::<PopeMsgCtx>(db, guild_id, channel_id).await;
 
         if let Ok(Some(deleted)) = res {
             Ok(deleted)

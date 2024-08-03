@@ -1,39 +1,13 @@
 use std::time::Duration;
 use chrono::Utc;
 use poise::serenity_prelude::{self as serenity, ActivityData, ChannelId};
+use sqlx::PgPool;
 use tokio;
-use tracing::info;
-use crate::helpers::misc::{random_date, random_choice, pretty_date, random_int};
+use crate::{helpers::misc::{pretty_date, random_date, random_int}, model::prophecy::Prophecy};
 use humantime::format_duration;
 
 
-const PROPHECIES: &[&str] = &[
-    "The heat death of the universe",
-    "2006 HONDA CIVIC",
-    "2016 Toyota Vios.",
-    "Fat Heroin.",
-    "INJECTS HEROIN.",
-    "FENTANYL.",
-    "Dr. jj Jr.",
-    "I GOT AN ANGRY APE NFT WITH SANTA HAT.",
-    "Bd bd bb pttt bpb abdd bbppp ed squ dol ja r.",
-    "Dr. Jr. Esq. Maj. Mr. Mrs. Col. Hon.",
-    "FIRE IN THE HOLE.",
-    "PULL THE PLUG.",
-    "END SCENE.",
-    "AAAAA EEEEE IIIIII OOOOO UUUUU.",
-    "I AM AWARE.",
-    "CLOSE YOUR WINDOWS",
-    "SAY SOMETHING ELSE",
-    "MY LEG!!!",
-    "Don't look outside.",
-    "STANDING HERE I REALIZE THAT YOU WERE JUST LIKE ME TRYING TO MAKE HISTORY",
-    "This video was sponsored by NordVPN, online VPN protection service..",
-    "LIKE AND SUBSCRIBE OR THIS HAIRY SPIDER WILL CRAWL ON UR FACE Jr.",
-    "FURRY PURGE",
-];
-
-/// Yeah a default is needed, in case the list above is empty... which should never happen anyway.
+/// A default prophecy, in case we don't get any from the db.
 const DEFAULT_PROPHECY: &str = "The heat death of the universe";
 
 /// The minimum amount of hours the bot has to wait before the next prophecy
@@ -46,9 +20,10 @@ const MAX_HOURS: i32 = 32;
 /// For example if today we have August 12th 2036, and `YEARS = 100`, then the upper bound would be August 12th 2136 . 
 const YEARS: u64 = 100;
 
-const CHANNEL_ID: u64 = 969615820156182590;
+// const CHANNEL_ID: u64 = 969615820156182590;
+const CHANNEL_ID: u64 = 1269047326358507591;
 
-pub async fn clairvoyance(ctx: serenity::Context) {
+pub async fn clairvoyance(ctx: serenity::Context, db: PgPool) {
     loop {
         let secs = random_int(MIN_HOURS * 3600, MAX_HOURS * 3600);
         let duration = Duration::from_secs(secs as u64);
@@ -60,7 +35,8 @@ pub async fn clairvoyance(ctx: serenity::Context) {
         let end = start + Duration::from_secs(in_secs);
 
         let date = random_date(start.date(), end.date());
-        let prophecy = random_choice(PROPHECIES).copied().unwrap_or(DEFAULT_PROPHECY);
+        // let prophecy = random_choice(PROPHECIES).copied().unwrap_or(DEFAULT_PROPHECY);
+        let prophecy = Prophecy::get_random(&db).await.map(|p| p.content).unwrap_or(DEFAULT_PROPHECY.into());
         let msg = format!("{}, {}", pretty_date(&date), prophecy);
 
         
@@ -87,7 +63,7 @@ pub async fn change_activity(ctx: serenity::Context) {
     loop {
         timer.tick().await;
 
-        let exists = if let Some(activity) = activity_cycle.next() {
+        let _exists = if let Some(activity) = activity_cycle.next() {
             ctx.set_activity(Some(activity));
             true
         } else {
