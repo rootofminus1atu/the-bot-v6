@@ -7,11 +7,11 @@ use crate::{Context, Error};
 
 pub async fn send_embed_menu(
     ctx: Context<'_>, 
-    sections: Vec<(CreateSelectMenuOption, CreateEmbed)>, 
+    sections: &[(CreateSelectMenuOption, CreateEmbed)], 
     initial_embed: CreateEmbed,
     menu_placeholder: &str
 ) -> Result<(), Error> {
-    let (options, embeds): (Vec<_>, Vec<_>) = sections.into_iter().unzip();
+    let (options, embeds): (Vec<_>, Vec<_>) = sections.iter().cloned().unzip();
 
     // setting the values to indeces (will be used later to associate menu options with embeds)
     let options = options.into_iter()

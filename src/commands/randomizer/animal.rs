@@ -4,7 +4,7 @@ use reqwest;
 use serde_json;
 
 
-/// Get a random fluffy fox!
+/// Get a random foxs
 #[poise::command(prefix_command, slash_command, category = "Randomizer")]
 pub async fn fox(ctx: Context<'_>) -> Result<(), Error> {
     let url = "https://randomfox.ca/floof";

@@ -25,4 +25,5 @@ futures = "0.3.30"
 regex = "1.10.6"
 thiserror = "1.0.63"
 async-trait = "0.1.81"
+titlecase = "3.3.0"
 

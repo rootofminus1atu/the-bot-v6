@@ -37,6 +37,22 @@ impl Location {
         Ok(res)
     }
 
+    pub async fn get_one(db: &PgPool, location: &Location) -> Result<Option<Self>, sqlx::Error> {
+        let query = format!(
+            "SELECT * FROM {} WHERE guild_id = $1 AND channel_id = $2 AND kind = $3", 
+            Self::TABLE_NAME
+        );
+
+        let res = sqlx::query_as::<_, Self>(&query)
+            .bind(location.guild_id)
+            .bind(location.channel_id)
+            .bind(&location.kind)
+            .fetch_optional(db)
+            .await?;
+
+        Ok(res)
+    }
+
     pub async fn insert(db: &PgPool, location: &Location) -> Result<Self, sqlx::Error> {
         let query = format!(
             "INSERT INTO {} (guild_id, channel_id, kind) VALUES ($1, $2, $3) RETURNING *",
@@ -69,46 +85,30 @@ impl Location {
         Ok(res)
     }
 
-    pub async fn toggle(db: &PgPool, location: &Location) -> Result<(ToggleAction, Self), sqlx::Error> {
+    pub async fn delete_no_opt(db: &PgPool, location: &Location) -> Result<Self, sqlx::Error> {
         let query = format!(
-            "SELECT * FROM {} WHERE guild_id = $1 AND channel_id = $2 AND kind = $3", 
+            "DELETE FROM {} WHERE guild_id = $1 AND channel_id = $2 AND kind = $3 RETURNING *",
             Self::TABLE_NAME
         );
 
-        let existing_location = sqlx::query_as::<_, Self>(&query)
+        let res = sqlx::query_as::<_, Self>(&query)
             .bind(location.guild_id)
             .bind(location.channel_id)
             .bind(&location.kind)
-            .fetch_optional(db)
+            .fetch_one(db)
             .await?;
 
+        Ok(res)
+    }
+
+    pub async fn toggle(db: &PgPool, location: &Location) -> Result<(ToggleAction, Self), sqlx::Error> {
+        let existing_location = Self::get_one(db, location).await?;
+
         if let Some(_) = existing_location {
-            let delete_query = format!(
-                "DELETE FROM {} WHERE guild_id = $1 AND channel_id = $2 AND kind = $3 RETURNING *",
-                Self::TABLE_NAME
-            );
-
-            let res = sqlx::query_as::<_, Self>(&delete_query)
-                .bind(location.guild_id)
-                .bind(location.channel_id)
-                .bind(&location.kind)
-                .fetch_one(db)
-                .await?;
-
+            let res = Self::delete_no_opt(db, location).await?;
             Ok((ToggleAction::Deleted, res))
         } else {
-            let insert_query = format!(
-                "INSERT INTO {} (guild_id, channel_id, kind) VALUES ($1, $2, $3) RETURNING *",
-                Self::TABLE_NAME
-            );
-
-            let res = sqlx::query_as::<_, Self>(&insert_query)
-                .bind(location.guild_id)
-                .bind(location.channel_id)
-                .bind(&location.kind)
-                .fetch_one(db)
-                .await?;
-
+            let res = Self::insert(db, location).await?;
             Ok((ToggleAction::Inserted, res))
         }
     }

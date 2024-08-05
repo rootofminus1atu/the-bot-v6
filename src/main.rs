@@ -68,37 +68,31 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![
+                commands: vec![
 
                 commands::fun::bite::bite(),
                 commands::fun::calculate::calculate(),
                 commands::fun::kazakhstan::kazakhstan(),
-                commands::fun::sashley::sashley(),
+                commands::fun::translate::translate(),
                 
                 commands::randomizer::animal::fox(),
                 commands::randomizer::popequote::popequote(),
-
+        
+                commands::info::help::help(),
+        
                 commands::admin::timed_message_config::admin(),
-
+        
                 commands::owner::cleverbot::forget(),
                 commands::owner::cleverbot::cerebroscopy(),
                 commands::owner::cleverbot::recookie(),
                 commands::owner::kill::kill(),
-                
-                // owner
-                // kill(),
-                // forget(),
-                // cerebroscopy(),
-                // recookie(),
-
-                // db_access
-                // db_access::commands::owner()
             ],
             event_handler: |_ctx, event, _framework, _data| {
                 Box::pin(events::handler::event_handler(_ctx, event, _framework, _data))
             },
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("!".into()),
+                mention_as_prefix: false,
                 ..Default::default()
             },
             ..Default::default()

@@ -1,7 +1,11 @@
 use crate::{Context, Error};
 use shunting::{ShuntingParser, MathContext};
 
-/// Cat knows some simple math too!
+/// Calculate some math
+/// 
+/// Calculate a mathematical expression. Example expressions:
+/// - 1 + 2 * 3
+/// - (sin(9))^2 + (cos(9))^2
 #[poise::command(prefix_command, slash_command, category = "Fun")]
 pub async fn calculate(
     ctx: Context<'_>,

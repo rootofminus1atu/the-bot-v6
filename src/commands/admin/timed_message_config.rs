@@ -10,9 +10,10 @@ use crate::helpers::discord::admin_or_owner;
 #[poise::command(
     prefix_command,
     slash_command,
-    subcommands("pope_msg", "clairvoyance"),
-    subcommand_required,
     ephemeral,
+    category = "Admin",
+    subcommands("pope_msg", "prophecy"),
+    subcommand_required,
     check = "admin_or_owner"
 )]
 pub async fn admin(_: Context<'_>) -> Result<(), Error> {
@@ -22,6 +23,8 @@ pub async fn admin(_: Context<'_>) -> Result<(), Error> {
 #[poise::command(
     prefix_command,
     slash_command,
+    ephemeral,
+    category = "Admin",
     subcommands("pope_msg_channel"),
     subcommand_required,
 )]
@@ -29,11 +32,16 @@ pub async fn pope_msg(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-/// (ADMIN ONLY) Toggles the channel to send daily pope messages to
+/// (ADMIN ONLY) Toggles the channel for daily pope messages.
+/// 
+/// Run this command in a channel to toggle the channel for receiving daily pope messages. 
+/// Pope messages are sent each day at 21:37 Dublin time, they include a random pope quote.
 #[poise::command(
     prefix_command,
     slash_command,
-    rename = "channel"
+    ephemeral,
+    category = "Admin",
+    rename = "channel",
 )]
 pub async fn pope_msg_channel(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id: i64 = ctx.guild_id().map(|i| i.into()).ok_or(CustomError::GuildOnly)?;
@@ -67,19 +75,27 @@ pub async fn pope_msg_channel(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(
     prefix_command,
     slash_command,
-    subcommands("clairvoyance_channel")
+    ephemeral,
+    category = "Admin",
+    subcommands("prophecy_channel"),
+    subcommand_required,
 )]
-pub async fn clairvoyance(_: Context<'_>) -> Result<(), Error> {
+pub async fn prophecy(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-/// (ADMIN ONLY) Toggles the channel to send daily prophecies to
+/// (ADMIN ONLY) Toggles the channel for daily random prophecies
+///
+/// Run this command in a channel to toggle the channel for receiving clairvoyant prophecies. 
+/// Prophecies are sent once every 16 - 32 hours, the time interval is random and varies.
 #[poise::command(
     prefix_command,
     slash_command,
-    rename = "channel"
+    ephemeral,
+    category = "Admin",
+    rename = "channel",
 )]
-pub async fn clairvoyance_channel(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn prophecy_channel(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id: i64 = ctx.guild_id().map(|i| i.into()).ok_or(CustomError::GuildOnly)?;
     let channel_id: i64 = ctx.channel_id().into();
     let db = &ctx.data().db;

@@ -3,7 +3,7 @@ use tracing::info;
 use crate::{Context, Error};
 
 /// Resets the bot's conversation memory
-#[poise::command(prefix_command, owners_only, hide_in_help)]
+#[poise::command(prefix_command, owners_only, hide_in_help, category = "Owner")]
 pub async fn forget(ctx: Context<'_>) -> Result<(), Error> {
     ctx.data().cleverbot.clear_context().await;
 
@@ -13,7 +13,7 @@ pub async fn forget(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// Look into the bot's conversation memory
-#[poise::command(prefix_command, owners_only, hide_in_help)]
+#[poise::command(prefix_command, owners_only, hide_in_help, category = "Owner")]
 pub async fn cerebroscopy(ctx: Context<'_>) -> Result<(), Error> {
     let memory = format!("Memory: {:?}", ctx.data().cleverbot.get_context().await.list)
         .chars()
@@ -29,7 +29,7 @@ pub async fn cerebroscopy(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// Re-generate the bot's cleverbot cookie
-#[poise::command(prefix_command, owners_only, hide_in_help)]
+#[poise::command(prefix_command, owners_only, hide_in_help, category = "Owner")]
 pub async fn recookie(ctx: Context<'_>) -> Result<(), Error> {
     let res = ctx.data().cleverbot.generate_cookie().await?;
     info!("New cookie assigned successfully: {}", res);
