@@ -61,7 +61,7 @@ Installation steps:
     - Go to the `OAuth2` section, scroll down and check the `bot` and `application.commands` boxes.
     - On the same `OAuth2` section, scroll down and check the `Administrator` box (not a requirement but that's the easiest way if you've never created a discord bot before)
     - Copy the `Generated URL`, paste it in the url bar of your web browser
-    - Pick one of the servers and the bot should join it (if no servers are available, create one)
+    - Pick one of the servers and the bot should join it (if no discord servers are available, create one)
 3. Create a postgres database (can be local, can be [supabase](https://supabase.com/), anything with a connection string works)
 4. In the repository's root level, add a `Secrets.toml` file and copy-paste this into it:
 ```sh
