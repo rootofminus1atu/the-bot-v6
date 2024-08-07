@@ -62,12 +62,5 @@ pub async fn clairvoyance(ctx: serenity::Context, db: PgPool) {
         });
 
         join_all(futures).await;
-        
-        // in the future get channels from the db instead of hardcoding them here
-        // let channel_id = ChannelId::from(CHANNEL_ID); 
-
-        // if let Err(why) = channel_id.say(&ctx, msg).await {
-        //     eprintln!("Failed to send clairvoyance message: {:?}", why);
-        // }
     }
 }
