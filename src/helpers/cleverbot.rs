@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tokio::sync::Mutex as AsyncMutex;
 use serde_json::json;
-use tracing::info;
+use tracing::{debug, info};
 use crate::Error;
 
 
@@ -23,9 +23,11 @@ pub struct Cleverbot {
 
 
 impl Cleverbot {
-    pub fn new(api_key: String, api_link: String, max: usize) -> Self {
+    const API_LINK: &'static str = "https://clevreq-1-v9793518.deta.app/api/clevreq";
+
+    pub fn new(api_key: String, max: usize) -> Self {
         Cleverbot {
-            api_link,
+            api_link: Self::API_LINK.into(),
             api_key,
             cookie: Arc::new(AsyncMutex::new(None)),
             context: Arc::new(AsyncMutex::new(MaxQueue::new(max))),
@@ -80,7 +82,7 @@ impl Cleverbot {
 
 fn get_date() -> String {
     let now: DateTime<Utc> = Utc::now();
-    println!("now: {}", now.format("%Y%m%d").to_string());
+    debug!("now: {}", now.format("%Y%m%d").to_string());
     now.format("%Y%m%d").to_string()
 }
 
@@ -105,8 +107,8 @@ async fn get_cookie() -> Result<String, Error> {
     let cookie_str = cookie_before
         .map(|s| s.replace("B%", "31"));  // i have no idea why 31 works, but it's the only one that does
 
-    info!("new cookie before: {:?}", cookie_before);
-    info!("new cookie after:  {:?}", cookie_str);
+    debug!("new cookie before: {:?}", cookie_before);
+    debug!("new cookie after:  {:?}", cookie_str);
 
     cookie_str.ok_or("No cookie found".into())
 }

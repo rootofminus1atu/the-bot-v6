@@ -48,20 +48,12 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
         .await
         .expect("Failed to connect to database");
 
-
-    let cleverbot_api_link = secret_store
-        .get("CLEVERBOT_API_LINK")
-        .context("No cleverbot api link found in environment variables")?;
-
     let cleverbot = Arc::new(helpers::cleverbot::Cleverbot::new(
-        "lol_key_legit".into(), 
-        cleverbot_api_link, 
+        "lol_key_legit_there_is_no_key_requirement_yet".into(),
         100
     ));
     let cookie = cleverbot.generate_cookie().await
         .expect("Could not generate the 1st initial cookie");
-
-    info!("Starting off with cookie: {}", cookie);
 
     let client = reqwest::Client::new();
 
@@ -74,6 +66,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 commands::fun::calculate::calculate(),
                 commands::fun::kazakhstan::kazakhstan(),
                 commands::fun::translate::translate(),
+                commands::fun::soy::soy(),
                 
                 commands::randomizer::animal::fox(),
                 commands::randomizer::popequote::popequote(),

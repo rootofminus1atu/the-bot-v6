@@ -22,7 +22,7 @@ pub async fn mention_log(ctx: serenity::Context, new_message: Message) {
     ).await;
 
     if let Err(why) = res {
-        eprintln!("I CAN'T LOG MENTION: {}", why);
+        error!("I CAN'T LOG MENTION: {}", why);
     }
 }
 
@@ -53,6 +53,6 @@ pub async fn command_log(info: CmdLogInfo) {
     ).await;
 
     if let Err(why) = res {
-        eprintln!("I CAN'T LOG COMMAND: {}", why);
+        error!("I CAN'T LOG COMMAND: {}", why);
     }
 }
