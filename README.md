@@ -24,7 +24,7 @@ Translate command
 
 Help command
 
-![calculate-command](images/calculate-command.png)
+![calculate-command](images/help-command.png)
 
 
 ### Feature checklist:
