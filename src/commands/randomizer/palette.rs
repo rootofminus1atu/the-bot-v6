@@ -94,13 +94,14 @@ async fn get_palette_bytes() -> Result<Vec<u8>, Error> {
         .json::<ColorData>()
         .await?;
 
-    let mut colors = res.result
+    let colors = res.result
         .iter()
         .map(|c| {
             Rgba([c.r, c.g, c.b, 255])
-        });
+        })
+        .collect::<Vec<_>>();
 
-    let img_bytes = img_to_bytes(create_image(&mut colors))?;
+    let img_bytes = img_to_bytes(create_image(&colors))?;
 
     Ok(img_bytes)
 }
@@ -112,22 +113,22 @@ fn img_to_bytes(img: ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Vec<u8>, Error> {
     Ok(img_cursor.into_inner())
 }
 
-fn create_image(colors: &mut impl Iterator<Item = Rgba<u8>>) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+fn create_image(colors: &[Rgba<u8>]) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let height = PIXEL_HEIGHT;
-    let count = colors.count();
+    let count = colors.len();
     let width = height * count;
 
     // create an ImageBuffer with the specified width and height
     let mut img = ImageBuffer::<Rgba<u8>, Vec<u8>>::new(width as u32, height as u32);
 
     // draw the squares with different colors
-    for (i, color) in colors.enumerate() {
+    for (i, color) in colors.iter().enumerate() {
         let x_start = i * (width / count);
         let x_end = (i + 1) * (width / count);
 
         for x in x_start..x_end {
             for y in 0..height {
-                img.put_pixel(x as u32, y as u32, color);
+                img.put_pixel(x as u32, y as u32, *color);
             }
         }
     }
