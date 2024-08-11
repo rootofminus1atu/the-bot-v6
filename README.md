@@ -37,7 +37,7 @@ Help command
 - [x] Daily prophecies, random time intervals
 - [x] A feature allowing admins to toggle channels for prophecies and pope messages
 - [x] Soy image editing command
-- [ ] Random color palette generation
+- [x] Random color palette generation
 - [ ] More info commands, for example info about the bot, info about the server, etc.
 - [ ] Ytdl command
 

@@ -70,6 +70,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 
                 commands::randomizer::animal::fox(),
                 commands::randomizer::popequote::popequote(),
+                commands::randomizer::palette::palette(),
         
                 commands::info::help::help(),
         
