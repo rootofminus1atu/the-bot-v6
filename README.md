@@ -1,6 +1,6 @@
 # the-bot-v6
 
-A general all-purpose discord bot, made for fun. Currently, it is being ported from another private bot project (also written by me) and made public. Most features from that bot can be safely made public here. There is no live demo for now, but the code can be downloaded and ran.
+A general all-purpose discord bot, made for fun. Currently, it is being ported from another private bot project (also written by me) and made public. Most features from that bot can be safely made public here. There is no live demo (yet), but the code can be [downloaded and ran](#installation).
 
 
 ## Features
