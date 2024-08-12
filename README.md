@@ -26,6 +26,10 @@ Help command
 
 ![calculate-command](images/help-command.png)
 
+Palette command
+
+![palette-command](images/palette-command.png)
+
 
 ### Feature checklist:
 - [x] Some fun and randomizer commands
