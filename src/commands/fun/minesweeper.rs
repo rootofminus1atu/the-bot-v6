@@ -101,14 +101,35 @@ pub async fn shop(ctx: Context<'_>) -> Result<(), Error> {
 
     ctx.send(CreateReply::default().embed(create_embed(&cart))).await?;
 
-    while let Some(product) = rx.recv().await {
-        cart.push(product);
+    // while let Some(product) = rx.recv().await {
+    //     cart.push(product);
 
-        ctx.send(CreateReply::default()
-            .embed(create_embed(&cart))
-            .content("cart updated"))
-            .await?;
+    //     ctx.send(CreateReply::default()
+    //         .embed(create_embed(&cart))
+    //         .content("cart updated"))
+    //         .await?;
+    // }
+
+    loop {
+        match tokio::time::timeout(tokio::time::Duration::from_secs(10), rx.recv()).await {
+            Ok(Some(product)) => {
+                cart.push(product);
+                ctx.send(CreateReply::default()
+                    .embed(create_embed(&cart))
+                    .content("cart updated"))
+                    .await?;
+            },
+            Ok(None) => {
+                break;
+            },
+            Err(_e) => {
+                ctx.say("you waited too long").await?;
+                break;
+            }
+        }
     }
+
+    ctx.data().carts.lock().await.remove(&user_channel_key);
 
     Ok(())
 }
@@ -117,8 +138,8 @@ pub async fn shop(ctx: Context<'_>) -> Result<(), Error> {
 pub async fn add(ctx: Context<'_>, product: String) -> Result<(), Error> {
     let user_channel_key = (ctx.author().id, ctx.channel_id());
 
-    if let Some(cart_channel) = ctx.data().carts.lock().await.get(&user_channel_key) {
-        cart_channel.send(product.clone()).await?;
+    if let Some(cart_sender) = ctx.data().carts.lock().await.get(&user_channel_key) {
+        cart_sender.send(product.clone()).await?;
         ctx.say(format!("you added `{}`", product)).await?;
     } else {
         ctx.say("start shopping first bruh").await?;

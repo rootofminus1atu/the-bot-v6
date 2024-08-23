@@ -6,7 +6,7 @@ use shuttle_serenity::ShuttleSerenity;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tokio::sync::{mpsc, Mutex};
 use tracing::info;
-
+use dashmap::DashMap;
 
 pub mod error;
 mod helpers;
@@ -28,7 +28,7 @@ pub struct Data {
     translation_key: String,
     cleverbot: Arc<Cleverbot>,
 
-    carts: Arc<Mutex<HashMap<(serenity::UserId, serenity::ChannelId), mpsc::Sender<String>>>>,
+    carts: Arc<Mutex<DashMap<(serenity::UserId, serenity::ChannelId), mpsc::Sender<String>>>>,
 
 } // User data, which is stored and accessible in all command invocations
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -123,7 +123,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                     client,
                     translation_key,
                     cleverbot,
-                    carts: Arc::new(Mutex::new(HashMap::new()))
+                    carts: Arc::new(Mutex::new(DashMap::new()))
                 })
             })
         })
