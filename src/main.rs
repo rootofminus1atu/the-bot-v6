@@ -28,7 +28,7 @@ pub struct Data {
     translation_key: String,
     cleverbot: Arc<Cleverbot>,
 
-    carts: Arc<Mutex<DashMap<(serenity::UserId, serenity::ChannelId), mpsc::Sender<String>>>>,
+    carts: DashMap<(serenity::UserId, serenity::ChannelId), mpsc::Sender<String>>,
 
 } // User data, which is stored and accessible in all command invocations
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -123,7 +123,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                     client,
                     translation_key,
                     cleverbot,
-                    carts: Arc::new(Mutex::new(DashMap::new()))
+                    carts: DashMap::new()
                 })
             })
         })

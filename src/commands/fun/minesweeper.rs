@@ -97,7 +97,7 @@ pub async fn shop(ctx: Context<'_>) -> Result<(), Error> {
     let (tx, mut rx) = mpsc::channel::<String>(10);
     let mut cart: Vec<String> = vec![];
 
-    ctx.data().carts.lock().await.insert(user_channel_key, tx);
+    ctx.data().carts.insert(user_channel_key, tx);
 
     ctx.send(CreateReply::default().embed(create_embed(&cart))).await?;
 
@@ -129,7 +129,7 @@ pub async fn shop(ctx: Context<'_>) -> Result<(), Error> {
         }
     }
 
-    ctx.data().carts.lock().await.remove(&user_channel_key);
+    ctx.data().carts.remove(&user_channel_key);
 
     Ok(())
 }
@@ -138,11 +138,14 @@ pub async fn shop(ctx: Context<'_>) -> Result<(), Error> {
 pub async fn add(ctx: Context<'_>, product: String) -> Result<(), Error> {
     let user_channel_key = (ctx.author().id, ctx.channel_id());
 
-    if let Some(cart_sender) = ctx.data().carts.lock().await.get(&user_channel_key) {
+    // DO NOT FORGET THE DAMN CLONE
+    // DO NOT HAVE dashmap::Ref, clone out of it
+    // or else deadlock
+    if let Some(cart_sender) = ctx.data().carts.get(&user_channel_key).map(|sender| sender.clone()) {
         cart_sender.send(product.clone()).await?;
         ctx.say(format!("you added `{}`", product)).await?;
     } else {
-        ctx.say("start shopping first bruh").await?;
+        ctx.say("start shWopping first bruh").await?;
     }
 
     Ok(())
