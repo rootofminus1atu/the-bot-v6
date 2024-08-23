@@ -1,9 +1,10 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use anyhow::Context as _;
 use poise::serenity_prelude::{self as serenity, ClientBuilder};
 use shuttle_runtime::SecretStore;
 use shuttle_serenity::ShuttleSerenity;
 use sqlx::{PgPool, postgres::PgPoolOptions};
+use tokio::sync::{mpsc, Mutex};
 use tracing::info;
 
 
@@ -17,11 +18,18 @@ mod model;
 
 use helpers::cleverbot::Cleverbot;
 
+struct CartChannel {
+    sender: mpsc::Sender<String>,
+}
+
 pub struct Data {
     db: PgPool,
     client: reqwest::Client,
     translation_key: String,
-    cleverbot: Arc<Cleverbot>
+    cleverbot: Arc<Cleverbot>,
+
+    carts: Arc<Mutex<HashMap<(serenity::UserId, serenity::ChannelId), mpsc::Sender<String>>>>,
+
 } // User data, which is stored and accessible in all command invocations
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -67,6 +75,10 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 commands::fun::kazakhstan::kazakhstan(),
                 commands::fun::translate::translate(),
                 commands::fun::soy::soy(),
+                commands::fun::minesweeper::boysweeper(),
+                // testing
+                commands::fun::minesweeper::shop(),
+                commands::fun::minesweeper::add(),
                 
                 commands::randomizer::animal::fox(),
                 commands::randomizer::popequote::popequote(),
@@ -110,7 +122,8 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                     db,
                     client,
                     translation_key,
-                    cleverbot
+                    cleverbot,
+                    carts: Arc::new(Mutex::new(HashMap::new()))
                 })
             })
         })
