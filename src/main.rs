@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 use anyhow::Context as _;
+use commands::fun::minesweeper::Coord;
 use poise::serenity_prelude::{self as serenity, ClientBuilder};
 use shuttle_runtime::SecretStore;
 use shuttle_serenity::ShuttleSerenity;
@@ -29,6 +30,7 @@ pub struct Data {
     cleverbot: Arc<Cleverbot>,
 
     carts: DashMap<(serenity::UserId, serenity::ChannelId), mpsc::Sender<String>>,
+    minesweepers: DashMap<(serenity::UserId, serenity::ChannelId), mpsc::Sender<Coord>>
 
 } // User data, which is stored and accessible in all command invocations
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -75,6 +77,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 commands::fun::kazakhstan::kazakhstan(),
                 commands::fun::translate::translate(),
                 commands::fun::soy::soy(),
+                // wip
                 commands::fun::minesweeper::boysweeper(),
                 // testing
                 commands::fun::minesweeper::shop(),
@@ -123,7 +126,8 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                     client,
                     translation_key,
                     cleverbot,
-                    carts: DashMap::new()
+                    carts: DashMap::new(),
+                    minesweepers: DashMap::new()
                 })
             })
         })

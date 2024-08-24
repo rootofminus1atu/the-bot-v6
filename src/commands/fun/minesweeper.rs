@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{cell::Cell, collections::HashSet};
 use poise::{serenity_prelude::{self as serenity, CreateEmbed}, CreateReply};
 use rand::Rng;
 use tokio::sync::mpsc;
@@ -23,15 +23,51 @@ pub async fn boysweeper(_: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(prefix_command, slash_command)]
 async fn start(ctx: Context<'_>) -> Result<(), Error> {
-    let ctx_id = ctx.id();
-    let author_id: u64 = ctx.author().id.into();
+    let user_channel_key = (ctx.author().id, ctx.channel_id());
+    let (tx, mut rx) = mpsc::channel::<Coord>(10);
+    let mut minesweeper = Minesweeper::new(Dimensions::parse(5, 5)?, 5)?;
 
-    ctx.send(CreateReply::default()
-        .embed(CreateEmbed::default().title("boysweeper here").description("will be edited, maybe reposted"))
-    ).await?;
+    ctx.data().minesweepers.insert(user_channel_key, tx);
 
+    ctx.send(CreateReply::default().embed(create_minesweeper_embed(&minesweeper))).await?;
+
+    // todo: pass coords that are guaranteed to be verified and be fine with the board size
+    while let Some(coord) = rx.recv().await {
+        let res = minesweeper.reveal(coord)?;
+        dbg!(&minesweeper);
+
+        // things to consider:
+        // 1. out of bounds
+        // 2. already revealed
+        // 3. bomb
+        // 4. winnar
+
+        // other things to note:
+        // - always remove the correct kv from the dashmap (if this command is used in a channel in which the bot cannot speak, an entry will be created, but it wont be removed if it fails in this loop, since we would exit early)
+
+        ctx.send(CreateReply::default()
+            .embed(create_minesweeper_embed(&minesweeper)))
+            .await?;
+    }
 
     Ok(())
+}
+
+fn create_minesweeper_embed(minesweeper: &Minesweeper) -> CreateEmbed {
+    let s = minesweeper.to_str_with(|cell| {
+        if cell.hidden {
+            ":white_large_square:".into()
+        } else {
+            match cell.data {
+                CellData::Bomb => format!("{}", MINE.to_string()),
+                CellData::Num(n) => format!(":number_{}:", n)
+            }
+        }
+    });
+
+    CreateEmbed::default()
+        .title("minesweeper for user")
+        .description(s)
 }
 
 #[poise::command(prefix_command, slash_command, rename = "move", ephemeral)]
@@ -41,8 +77,22 @@ async fn move_com(
     #[description = "Your next boysweeper move, for example A1"]
     move_param: String
 ) -> Result<(), Error> {
+    let user_channel_key = (ctx.author().id, ctx.channel_id());
 
-    ctx.say(format!("You uncovered `{}`. The original embed will be edited. This msg is invisible.", move_param)).await?;
+    // ctx.say(format!("You uncovered `{}`. The original embed will be edited. This msg is invisible.", move_param)).await?;
+
+    // todo: make sure this is a verified coord and is guaranteed to be fine with the dimensions and all that
+    let coord = Coord::from_str(&move_param)?;
+
+    // DO NOT FORGET THE DAMN CLONE
+    // DO NOT HAVE dashmap::Ref, clone out of it
+    // or else deadlock
+    if let Some(sender) = ctx.data().minesweepers.get(&user_channel_key).map(|sender| sender.clone()) {
+        sender.send(coord.clone()).await?;
+        ctx.say(format!("your move: `{:?}`", coord)).await?;
+    } else {
+        ctx.say("start a minesweeper game first bruh").await?;
+    }
 
     Ok(())
 }
@@ -53,9 +103,9 @@ async fn classic(ctx: Context<'_>) -> Result<(), Error> {
     let minesweeper = Minesweeper::new(Dimensions::parse(5, 5)?, 5)?;
 
     let s = minesweeper.to_str_with(|cell| {
-        match cell {
-            MinesweeperCell::Bomb => format!("||{}||", MINE.to_string()),
-            MinesweeperCell::Num(n) => format!("||:number_{}:||", n)
+        match cell.data {
+            CellData::Bomb => format!("||{}||", MINE.to_string()),
+            CellData::Num(n) => format!("||:number_{}:||", n)
         }
     });
 
@@ -177,6 +227,12 @@ pub enum MinesweeperError {
     TooManyBombs { provided: usize, max_allowed: usize },
     #[error("Grid dimensions must be non-negative")]
     InvalidDimensions,
+    #[error("Out of bounds")]
+    CoordOutOfBounds { provided_coord: Coord, max_allowed_coord: Coord },
+    #[error("Invalid coord string, provided `{provided}`, expected something of the form `num num`")]
+    InvalidCoordString { provided: String },
+    #[error("Parse error: {0}")]
+    ParseError(#[from] std::num::ParseIntError),
 }
 
 
@@ -209,9 +265,9 @@ impl Minesweeper {
         let bomb_coords = all_coords.into_iter().take(bombs_amount);
 
         for c in bomb_coords {
-            grid[(c.i, c.j)] = MinesweeperCell::Bomb;
+            grid[(c.i, c.j)] = MinesweeperCell::new(CellData::Bomb);
             for neighbor in c.neighbors(rows, cols) {
-                grid[(neighbor.i, neighbor.j)].increment_if_possible()
+                grid[(neighbor.i, neighbor.j)].data.increment_if_possible()
             }
         }
 
@@ -223,9 +279,9 @@ impl Minesweeper {
     }
 
     pub fn to_str(&self) -> String {
-        self.to_str_with(|cell| match cell {
-            MinesweeperCell::Bomb => "*".to_string(),
-            MinesweeperCell::Num(n) => n.to_string(),
+        self.to_str_with(|cell| match cell.data {
+            CellData::Bomb => "*".to_string(),
+            CellData::Num(n) => n.to_string(),
         })
     }
 
@@ -239,16 +295,61 @@ impl Minesweeper {
             .collect::<Vec<String>>()
             .join("\n")
     }
+
+    fn size_coord(&self) -> Coord {
+        Coord::new(self.cells.rows(), self.cells.cols())
+    }
+
+    pub fn reveal(&mut self, coord: Coord) -> Result<RevealAction, MinesweeperError> {
+        let max_allowed_coord = self.size_coord();
+        let cell = self.cells.get_mut(coord.i, coord.j)
+            .ok_or(MinesweeperError::CoordOutOfBounds { provided_coord: coord, max_allowed_coord })?;
+
+        if !cell.hidden {
+            return Ok(RevealAction::AlreadyRevealed)
+        }
+
+        cell.hidden = false;
+
+        Ok(RevealAction::Success { revealed: cell.data.clone() })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum RevealAction {
+    Success { revealed: CellData },
+    AlreadyRevealed,
 }
 
 
 #[derive(Debug, Clone)]
-pub enum MinesweeperCell {
+pub struct MinesweeperCell {
+    data: CellData,
+    hidden: bool
+}
+
+impl MinesweeperCell {
+    pub fn new(data: CellData) -> Self {
+        Self { data, hidden: true }
+    }
+}
+
+impl Default for MinesweeperCell {
+    fn default() -> Self {
+        Self {
+            data: CellData::default(),
+            hidden: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum CellData {
     Num(i32),
     Bomb
 }
 
-impl MinesweeperCell {
+impl CellData {
     pub fn increment_if_possible(&mut self) {
         if let Self::Num(n) = self {
            *n += 1;
@@ -256,7 +357,7 @@ impl MinesweeperCell {
     }
 }
 
-impl Default for MinesweeperCell {
+impl Default for CellData {
     fn default() -> Self {
         Self::Num(0)
     }
@@ -289,6 +390,17 @@ pub struct Coord {
 impl Coord {
     pub fn new(i: usize, j: usize) -> Self {
         Self { i, j }
+    }
+
+    /// format: `num num`
+    pub fn from_str(s: &str) -> Result<Self, MinesweeperError> {
+        let (left, right) = s.split_once(" ")
+            .ok_or(MinesweeperError::InvalidCoordString { provided: s.into() })?;
+
+        let i = left.trim().parse::<usize>()?;
+        let j = right.trim().parse::<usize>()?;
+
+        Ok(Self::new(i, j))
     }
 
     /// Returns an iterator over the neighbors of the coordinate.
@@ -356,7 +468,7 @@ impl Coord {
         let upper_i = (rows - 1).min(self.i + 1);
         let upper_j = (cols - 1).min(self.j + 1);
 
-        // debug!("center: {:?}, bounds: {:?} - {:?}", self, (lower_i, lower_j), (upper_i, upper_j));
+        println!("center: {:?}, bounds: {:?} - {:?}", self, (lower_i, lower_j), (upper_i, upper_j));
 
         // let idk = (lower_i..upper_i)
         // .flat_map(move |r| {
