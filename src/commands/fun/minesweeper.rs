@@ -44,6 +44,7 @@ async fn start(ctx: Context<'_>) -> Result<(), Error> {
 
         // other things to note:
         // - always remove the correct kv from the dashmap (if this command is used in a channel in which the bot cannot speak, an entry will be created, but it wont be removed if it fails in this loop, since we would exit early)
+        // - replace them when a new (kv) is added
 
         ctx.send(CreateReply::default()
             .embed(create_minesweeper_embed(&minesweeper)))
