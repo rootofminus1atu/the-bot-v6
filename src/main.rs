@@ -1,11 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 use anyhow::Context as _;
-use commands::fun::minesweeper::Coord;
+use commands::fun::minesweeper::{Coord, Minesweeper, ValidCoord};
 use poise::serenity_prelude::{self as serenity, ClientBuilder};
 use shuttle_runtime::SecretStore;
 use shuttle_serenity::ShuttleSerenity;
 use sqlx::{PgPool, postgres::PgPoolOptions};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing::info;
 use dashmap::DashMap;
 
@@ -19,8 +19,11 @@ mod model;
 
 use helpers::cleverbot::Cleverbot;
 
-struct CartChannel {
-    sender: mpsc::Sender<String>,
+
+#[derive(Debug, Clone)]
+pub struct MinesweeperSession {
+    game: Arc<RwLock<Minesweeper>>,
+    sender: mpsc::Sender<ValidCoord>,
 }
 
 pub struct Data {
@@ -30,7 +33,7 @@ pub struct Data {
     cleverbot: Arc<Cleverbot>,
 
     carts: DashMap<(serenity::UserId, serenity::ChannelId), mpsc::Sender<String>>,
-    minesweepers: DashMap<(serenity::UserId, serenity::ChannelId), mpsc::Sender<Coord>>
+    minesweepers: DashMap<(serenity::UserId, serenity::ChannelId), MinesweeperSession>
 
 } // User data, which is stored and accessible in all command invocations
 type Error = Box<dyn std::error::Error + Send + Sync>;

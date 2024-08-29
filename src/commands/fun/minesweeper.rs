@@ -1,10 +1,11 @@
-use std::{cell::Cell, collections::HashSet};
+use std::sync::Arc;
+
 use poise::{serenity_prelude::{self as serenity, CreateEmbed}, CreateReply};
-use rand::Rng;
-use tokio::sync::mpsc;
-use crate::{CartChannel, Context, Error};
+use serde::de;
+use tokio::sync::{mpsc, RwLock};
+use tracing::info;
+use crate::{Context, Error, MinesweeperSession};
 use grid::Grid;
-use tracing::debug;
 use rand::prelude::SliceRandom;
 
 const MINE: &'static str = "<:iknowwhatyouare:1276543226152615936>";
@@ -21,21 +22,6 @@ pub async fn boysweeper(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(prefix_command, slash_command)]
-async fn start(ctx: Context<'_>) -> Result<(), Error> {
-    let user_channel_key = (ctx.author().id, ctx.channel_id());
-    let (tx, mut rx) = mpsc::channel::<Coord>(10);
-    let mut minesweeper = Minesweeper::new(Dimensions::parse(5, 5)?, 5)?;
-
-    ctx.data().minesweepers.insert(user_channel_key, tx);
-
-    ctx.send(CreateReply::default().embed(create_minesweeper_embed(&minesweeper))).await?;
-
-    // todo: pass coords that are guaranteed to be verified and be fine with the board size
-    while let Some(coord) = rx.recv().await {
-        let res = minesweeper.reveal(coord)?;
-        dbg!(&minesweeper);
-
         // things to consider:
         // 1. out of bounds
         // 2. already revealed
@@ -46,9 +32,30 @@ async fn start(ctx: Context<'_>) -> Result<(), Error> {
         // - always remove the correct kv from the dashmap (if this command is used in a channel in which the bot cannot speak, an entry will be created, but it wont be removed if it fails in this loop, since we would exit early)
         // - replace them when a new (kv) is added
 
+        // todo: pass coords that are guaranteed to be verified and be fine with the board size
+
+#[poise::command(prefix_command, slash_command)]
+async fn start(ctx: Context<'_>) -> Result<(), Error> {
+    let user_channel_key = (ctx.author().id, ctx.channel_id());
+    let (tx, mut rx) = mpsc::channel::<ValidCoord>(10);
+    let minesweeper = Arc::new(RwLock::new(Minesweeper::new(Dimensions::parse(5, 5)?, 5)?));
+    // Arc<RwLock<_>> because i want both rw access here, but only w access in the move command (for move verification)
+    // an alternative could be re-inserting `minesweeper` after each `.reveal()`
+
+    ctx.data().minesweepers.insert(user_channel_key, MinesweeperSession { game: minesweeper.clone(), sender: tx });
+
+    // why does this work? the &*? idk
+    ctx.send(CreateReply::default().embed(create_minesweeper_embed(&*minesweeper.read().await))).await?;
+
+    
+    while let Some(coord) = rx.recv().await {
+        minesweeper.write().await.reveal(coord)?;
+
+        info!("batu send");
         ctx.send(CreateReply::default()
-            .embed(create_minesweeper_embed(&minesweeper)))
+            .embed(create_minesweeper_embed(&*minesweeper.read().await)))
             .await?;
+        info!("we sent!");
     }
 
     Ok(())
@@ -80,20 +87,21 @@ async fn move_com(
 ) -> Result<(), Error> {
     let user_channel_key = (ctx.author().id, ctx.channel_id());
 
-    // ctx.say(format!("You uncovered `{}`. The original embed will be edited. This msg is invisible.", move_param)).await?;
-
     // todo: make sure this is a verified coord and is guaranteed to be fine with the dimensions and all that
     let coord = Coord::from_str(&move_param)?;
 
     // DO NOT FORGET THE DAMN CLONE
     // DO NOT HAVE dashmap::Ref, clone out of it
     // or else deadlock
-    if let Some(sender) = ctx.data().minesweepers.get(&user_channel_key).map(|sender| sender.clone()) {
-        sender.send(coord.clone()).await?;
-        ctx.say(format!("your move: `{:?}`", coord)).await?;
-    } else {
+    let Some(session) = ctx.data().minesweepers.get(&user_channel_key).map(|session| session.clone()) else {
         ctx.say("start a minesweeper game first bruh").await?;
-    }
+        return Ok(())
+    };
+
+    let valid_coord = session.game.read().await.get_valid_coord(coord)?;
+
+    session.sender.send(valid_coord.clone()).await?;
+    ctx.say(format!("your move: `{:?}`", coord)).await?;
 
     Ok(())
 }
@@ -215,7 +223,16 @@ fn create_embed(cart: &[String]) -> CreateEmbed {
 
 
 
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum InvalidCoordError {
+    #[error("Coordinate out of bounds")]
+    CoordOutOfBounds,
+    #[error("Coordinate already uncovered")]
+    CoordAlreadyUncovered,
+}
 
+#[derive(Debug, Clone)]
+pub struct ValidCoord(Coord);
 
 
 
@@ -243,6 +260,21 @@ pub struct Minesweeper {
 }
 
 impl Minesweeper {
+    pub fn get_valid_coord(&self, coord: Coord) -> Result<ValidCoord, InvalidCoordError> {
+        let rows = self.cells.rows();
+        let cols = self.cells.cols();
+
+        if coord.i >= rows || coord.j >= cols {
+            return Err(InvalidCoordError::CoordOutOfBounds)
+        }
+
+        if !self.cells[(coord.i, coord.j)].hidden { 
+            return Err(InvalidCoordError::CoordAlreadyUncovered)
+        }
+
+        Ok(ValidCoord(coord))
+    }
+
     pub fn new(dimensions: Dimensions, bombs_amount: usize) -> Result<Self, MinesweeperError> {
         let rows = dimensions.rows;
         let cols = dimensions.cols;
@@ -301,7 +333,7 @@ impl Minesweeper {
         Coord::new(self.cells.rows(), self.cells.cols())
     }
 
-    pub fn reveal(&mut self, coord: Coord) -> Result<RevealAction, MinesweeperError> {
+    pub fn reveal(&mut self, ValidCoord(coord): ValidCoord) -> Result<RevealAction, MinesweeperError> {
         let max_allowed_coord = self.size_coord();
         let cell = self.cells.get_mut(coord.i, coord.j)
             .ok_or(MinesweeperError::CoordOutOfBounds { provided_coord: coord, max_allowed_coord })?;
@@ -382,7 +414,7 @@ impl Dimensions {
 }
 
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct Coord {
     i: usize,
     j: usize
