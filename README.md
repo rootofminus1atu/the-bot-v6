@@ -48,6 +48,7 @@ Palette command
 ### Future features:
 - Automod
 - Warnings system
+- Minesweeper
 
 
 ## Installation
