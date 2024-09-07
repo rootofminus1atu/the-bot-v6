@@ -44,7 +44,6 @@ Palette command
 - [x] Random color palette generation
 - [ ] More info commands, for example info about the bot, info about the server, etc.
 - [ ] Ytdl command
-- [ ] /say and /kill commands
 
 ### Future features:
 - Automod
