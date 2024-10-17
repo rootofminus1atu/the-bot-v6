@@ -55,7 +55,7 @@ Palette command
 
 You will need:
 - Rust
-- Some PostgreSQL database (e.g., Supabase)
+- Some PostgreSQL database (Supabase, Neon, local postgres db, etc.)
 - A Discord account
 
 Installation steps:
