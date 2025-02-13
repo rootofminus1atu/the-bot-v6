@@ -45,7 +45,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 #[shuttle_runtime::main]
 async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> ShuttleSerenity {
     let discord_token = secret_store
-        .get("DISCORD_TOKEN")
+        .get("TESTING_BOT_TOKEN")
         .context("'DISCORD_TOKEN' was not found")?;
 
     let translation_key = secret_store
@@ -80,6 +80,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 commands::fun::kazakhstan::kazakhstan(),
                 commands::fun::translate::translate(),
                 commands::fun::soy::soy(),
+                commands::fun::speechbubble::speechbubble(),
                 // wip
                 commands::fun::minesweeper::boysweeper(),
                 // testing
