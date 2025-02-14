@@ -17,3 +17,6 @@ Secrets.toml
 Shuttle.toml
 nogit
 .env
+/target
+.shuttle*
+Secrets*.toml
