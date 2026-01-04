@@ -27,7 +27,7 @@ pub struct MinesweeperSession {
 }
 
 pub struct Data {
-    db: PgPool,
+    db: Option<PgPool>,
     client: reqwest::Client,
     translation_key: String,
     cleverbot: Arc<Cleverbot>,
@@ -45,21 +45,21 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 #[shuttle_runtime::main]
 async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> ShuttleSerenity {
     let discord_token = secret_store
-        .get("TESTING_BOT_TOKEN")
+        .get("MEOWFLOW_TOKEN")
         .context("'DISCORD_TOKEN' was not found")?;
 
     let translation_key = secret_store
         .get("TRANSLATION_KEY")
         .context("No translation key found in environment variables")?;
 
-    let database_url = secret_store
-        .get("DATABASE_URL")
-        .context("No database url found in environment variables")?;
+    // let database_url = secret_store
+    //     .get("DATABASE_URL")
+    //     .context("No database url found in environment variables")?;
 
-    let db = PgPoolOptions::new()
-        .connect(&database_url)
-        .await
-        .expect("Failed to connect to database");
+    // let db = PgPoolOptions::new()
+    //     .connect(&database_url)
+    //     .await
+    //     .expect("Failed to connect to database");
 
     let cleverbot = Arc::new(helpers::cleverbot::Cleverbot::new(
         "lol_key_legit_there_is_no_key_requirement_yet".into(),
@@ -94,6 +94,7 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 commands::info::help::help(),
         
                 commands::admin::timed_message_config::admin(),
+                commands::admin::say::say(),
         
                 commands::owner::cleverbot::forget(),
                 commands::owner::cleverbot::cerebroscopy(),
@@ -116,17 +117,18 @@ async fn poise(#[shuttle_runtime::Secrets] secret_store: SecretStore) -> Shuttle
                 println!("Syncing {} commands", coms.len());
                 poise::builtins::register_globally(ctx, coms).await?;
 
-                println!("setting up pope messages");
-                events::pope_msg::schedule_pope_msg(ctx.clone(), db.clone(), client.clone());
+                // println!("setting up pope messages");
+                // events::pope_msg::schedule_pope_msg(ctx.clone(), db.clone(), client.clone());
 
-                println!("starting activity cycle");
-                tokio::spawn(events::activity::change_activity(ctx.clone()));
+                // println!("starting activity cycle");
+                // tokio::spawn(events::activity::change_activity(ctx.clone()));
 
-                println!("starting clairvoyance");
-                tokio::spawn(events::clairvoyance::clairvoyance(ctx.clone(), db.clone()));
+                // println!("starting clairvoyance");
+                // tokio::spawn(events::clairvoyance::clairvoyance(ctx.clone(), db.clone()));
 
                 Ok(Data {
-                    db,
+                    // db,
+                    db: None,
                     client,
                     translation_key,
                     cleverbot,

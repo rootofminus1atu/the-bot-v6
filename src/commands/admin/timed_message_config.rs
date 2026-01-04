@@ -46,7 +46,7 @@ pub async fn pope_msg(_: Context<'_>) -> Result<(), Error> {
 pub async fn pope_msg_channel(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id: i64 = ctx.guild_id().map(|i| i.into()).ok_or(CustomError::GuildOnly)?;
     let channel_id: i64 = ctx.channel_id().into();
-    let db = &ctx.data().db;
+    let db = ctx.data().db.as_ref().unwrap();
 
     let location = Location {
         guild_id, 
@@ -98,7 +98,7 @@ pub async fn prophecy(_: Context<'_>) -> Result<(), Error> {
 pub async fn prophecy_channel(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id: i64 = ctx.guild_id().map(|i| i.into()).ok_or(CustomError::GuildOnly)?;
     let channel_id: i64 = ctx.channel_id().into();
-    let db = &ctx.data().db;
+    let db = ctx.data().db.as_ref().unwrap();
 
     let location = Location {
         guild_id, 
